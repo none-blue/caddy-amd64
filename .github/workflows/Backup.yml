@@ -1,0 +1,35 @@
+name: Backup
+on:
+  schedule:
+    - cron: "10 10 1-31/2 * *"
+  push:
+    branches:
+      - main
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Backup
+        run: |
+            rm -fr *
+            sudo apt update -yqq
+            sudo apt install upx git snapd -yqq
+            sudo snap install go --classic
+
+            go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+            GOOS=linux GOARCH=amd64 ~/go/bin/xcaddy build --with github.com/caddy-dns/cloudflare
+
+            upx --best caddy
+            #shopt -s extglob
+            #rm -vrf !("caddy")
+            mkdir -p .github/workflows
+            wget -qO .github/workflows/Backup.yml https://github.com/${{ github.repository }}/raw/main/.github/workflows/Backup.yml &> /dev/null
+            git config --global init.defaultBranch main
+            git init
+            git add .
+            git config user.name "mainians"
+            git config user.email "61817665+Scaleya@users.noreply.github.com"
+            git commit -m "caddy2 amd64 with cloudflare api binary"
+            git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
+            git push origin main --force
